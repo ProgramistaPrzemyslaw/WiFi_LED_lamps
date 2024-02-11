@@ -1,9 +1,8 @@
 #include <ESP8266WiFi.h>
-#include <ESPAsyncTCP.h>
-#include <ESPAsyncWebServer.h>
+
 // Replace with your network credentials
-const char* ssid     = "ssis";
-const char* password = "pass";
+const char* ssid     = "SSID";
+const char* password = "PASSWORD";
 
 // Set web server port number to 80
 WiFiServer server(80);
@@ -23,12 +22,12 @@ String WarmWhiteState = "off";
 String ColdWhiteState = "off";
 // Red, green, and blue pins for PWM control
 const int Freq = 22000;
-const int redPin = 15;     // 13 corresponds to GPIO13
-const int greenPin = 13;   // 12 corresponds to GPIO12
+const int redPin = 13;     // 13 corresponds to GPIO13
+const int greenPin = 15;   // 12 corresponds to GPIO12
 const int bluePin = 12;    // 14 corresponds to GPIO14
 const int WarWhitePin = 14;
 const int ColdWhitePin = 16;
-const int output = 2;
+
 // Setting PWM bit resolution
 const int resolution = 256;
 
@@ -54,7 +53,10 @@ void setup() {
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
   Serial.println(ssid);
+
   WiFi.begin(ssid, password);
+  //WiFi.softAP(ssid, password);
+  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
@@ -91,7 +93,26 @@ void loop(){
             client.println("Content-type:text/html");
             client.println("Connection: close");
             client.println();
-        
+            
+          if(header.indexOf("GET /13/on") >= 0){
+            Serial.println("WW ON");
+            WarmWhiteState = "on";
+            digitalWrite(WarWhitePin,HIGH);
+          }else if(header.indexOf("GET /13/off") >= 0){
+            Serial.println("WW OFF");
+            WarmWhiteState = "off";
+            digitalWrite(WarWhitePin,LOW);
+          }
+
+          if(header.indexOf("GET /15/on") >= 0){
+            Serial.println("CW ON");
+            ColdWhiteState = "on";
+            digitalWrite(ColdWhitePin,HIGH);
+          }else if(header.indexOf("GET /15/off") >= 0){
+            Serial.println("CW OFF");
+            ColdWhiteState = "off";
+            digitalWrite(ColdWhitePin,LOW);
+          }
 
             // Display the HTML web page
             client.println("<!DOCTYPE html><html>");
@@ -99,7 +120,7 @@ void loop(){
             client.println("<link rel=\"icon\" href=\"data:,\">");
             client.println("<link rel=\"stylesheet\" href=\"https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css\">");
             client.println("<script src=\"https://cdnjs.cloudflare.com/ajax/libs/jscolor/2.0.4/jscolor.min.js\"></script>");
-            client.println("</head><body><div class=\"container\"><div class=\"row\"><h1>WiFi Lamp</h1></div>");
+            client.println("</head><body><div class=\"container\"><div class=\"row\"><h1>ESP Color Picker</h1></div>");
             client.println("<a class=\"btn btn-primary btn-lg\" href=\"#\" id=\"change_color\" role=\"button\">Change Color</a> ");
             client.println("<input class=\"jscolor {onFineChange:'update(this)'}\" id=\"rgb\"></div>");
             client.println("<script>function update(picker) {document.getElementById('rgb').innerHTML = Math.round(picker.rgb[0]) + ', ' +  Math.round(picker.rgb[1]) + ', ' + Math.round(picker.rgb[2]);");
@@ -108,42 +129,11 @@ void loop(){
             client.println(".button { background-color: #195B6A; border: none; color: white; padding: 16px 40px;");
             client.println("text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}");
             client.println(".button2 {background-color: #77878A;}</style></head>");
+            client.println("<body>");
+
             
-
-
-client.println("<body>");
-client.println("<p>Warm White Brightness</p>");
-client.println("<p><span id=\"textWarmSliderValue\">%WSLIDERVALUE%</span></p>");
-client.println("<p><input type=\"range\" onchange=\"updateWarmSliderPWM(this)\" id=\"WarmSlider\" min=\"0\" max=\"100\" value=\"%WSLIDERVALUE%\" step=\"1\" class=\"slider\"></p>");
-client.println("<script>");
-client.println("function updateWarmSliderPWM(element) {");
-client.println("var WarmValue = document.getElementById(\"WarmSlider\").value;");
-client.println("document.getElementById(\"textWarmSliderValue\").innerHTML =  WarmValue;");
-client.println("console.log(WarmValue);");
-client.println("var xhr = new XMLHttpRequest();");
-client.println("xhr.open(\"GET\", \"/warm-slider?value=\"+ WarmValue, true);");
-client.println("xhr.send();");
-client.println("}");
-client.println("</script>");
-client.println("</body>");
             
-
-client.println("<body>");
-client.println("<p>Cold White Brightness</p>");
-client.println("<p><span id=\"textColdSliderValue\">%CSLIDERVALUE%</span></p>");
-client.println("<p><input type=\"range\" onchange=\"updateColdSliderPWM(this)\" id=\"ColdSlider\" min=\"0\" max=\"100\" value=\"%CSLIDERVALUE%\" step=\"1\" class=\"slider\"></p>");
-client.println("<script>");
-client.println("function updateColdSliderPWM(element) {");
-client.println("var ColdValue = document.getElementById(\"ColdSlider\").value;");
-client.println("document.getElementById(\"textColdSliderValue\").innerHTML =  ColdValue;");
-client.println("console.log(ColdValue);");
-client.println("var xhr = new XMLHttpRequest();");
-client.println("xhr.open(\"GET\", \"/cold-slider?value=\"+ ColdValue, true);");
-client.println("xhr.send();");
-client.println("}");
-client.println("</script>");
-client.println("</body>");     
-
+            
             client.println("");
             // The HTTP response ends with another blank line
             
@@ -161,12 +151,25 @@ client.println("</body>");
               Serial.println(redString.toInt());
               Serial.println(greenString.toInt());
               Serial.println(blueString.toInt());
-              analogWrite(redPin, 255-redString.toInt());
-              analogWrite(greenPin, 255-greenString.toInt());
-              analogWrite(bluePin, 255-blueString.toInt()); 
+              //analogWrite(redPin, 255-redString.toInt());
+              analogWrite(redPin, redString.toInt());
+              analogWrite(greenPin, greenString.toInt());
+              analogWrite(bluePin, blueString.toInt()); 
             }
 
           
+
+            if(WarmWhiteState == "off"){
+              client.println("<p><a href=\"/13/on\"><button class=\"button\">WW On</button></a></p>");
+            }else{
+              client.println("<p><a href=\"/13/off\"><button class=\"button button2\">WW Off</button></a></p>");
+            }
+
+            if(ColdWhiteState == "off"){
+              client.println("<p><a href=\"/15/on\"><button class=\"button\">CW On</button></a></p>");
+            }else{
+              client.println("<p><a href=\"/15/off\"><button class=\"button button2\">CW Off</button></a></p>");
+            }
             client.println("</body></html>");
             client.println();
             // Break out of the while loop
